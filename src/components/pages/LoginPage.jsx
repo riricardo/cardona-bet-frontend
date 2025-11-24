@@ -9,7 +9,10 @@ export default function LoginPage() {
         />
         <h1 className="casino-text mt-2">Cardona Bet</h1>
       </div>
-      <button className="btn btn-accent">Login with google</button>
+      <button className="btn btn-accent">
+        Login with google
+        <i className="fa-brands fa-google"></i>
+      </button>
     </div>
   );
 }
