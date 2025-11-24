@@ -11,15 +11,19 @@ const redNumbers = new Set([
 
 export default function RouletteWheel({ onSelect }) {
   const ref = useRef(null);
+
   const [layout, setLayout] = useState({
     radius: 200,
     buttonSize: 48,
   });
 
-  // how much of the available arc each button uses
-  // smaller = more gap
-  const fillRatio = 0.7; // try 0.6, 0.8, 1.0 etc.
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const count = numbers.length;
 
+  // how much arc each button fills (lower = more gap)
+  const fillRatio = 0.7;
+
+  // recalc radius + button size
   useEffect(() => {
     const update = () => {
       if (!ref.current) return;
@@ -27,22 +31,13 @@ export default function RouletteWheel({ onSelect }) {
       const w = ref.current.offsetWidth;
       const h = ref.current.offsetHeight;
 
-      // biggest circle that fits on screen
       const maxRadius = Math.min(w, h) / 2 - 20;
       const radius = maxRadius;
 
-      const count = numbers.length;
       const circumference = 2 * Math.PI * radius;
+      const spacing = circumference / count;
 
-      const spacing = circumference / count; // distance from center of one button to the next along the arc
-
-      // button size is a fraction of that spacing -> creates visual gap
-      const idealButton = spacing * fillRatio;
-
-      const buttonSize = Math.max(
-        6, // minimum so it doesn't disappear
-        Math.min(48, idealButton) // don't let it get huge
-      );
+      const buttonSize = Math.max(6, Math.min(48, spacing * fillRatio));
 
       setLayout({ radius, buttonSize });
     };
@@ -54,11 +49,50 @@ export default function RouletteWheel({ onSelect }) {
 
   const { radius, buttonSize } = layout;
 
+  // -----------------------------
+  // ⭐ SPIN ANIMATION
+  // -----------------------------
+  function spin() {
+    let index = 0;
+    let speed = 30; // fast at start
+    let steps = count * 3 + Math.floor(Math.random() * count); // random stop
+
+    function animate() {
+      setHighlightIndex(index % count);
+
+      if (steps <= 0) {
+        const finalNumber = numbers[index % count];
+        onSelect?.(finalNumber);
+        return;
+      }
+
+      steps--;
+      index++;
+
+      // slow down gradually
+      speed += 3;
+
+      setTimeout(animate, speed);
+    }
+
+    animate();
+  }
+
+  // -----------------------------
+  // 🌟 RENDER
+  // -----------------------------
+
   return (
     <div
       ref={ref}
-      className="w-full h-screen flex items-center justify-center bg-neutral-900"
+      className="w-full h-screen flex flex-col items-center justify-center"
     >
+      {/* SPIN BUTTON */}
+      <button onClick={spin} className="btn btn-accent">
+        SPIN
+      </button>
+
+      {/* THE WHEEL */}
       <div
         className="relative"
         style={{
@@ -67,34 +101,37 @@ export default function RouletteWheel({ onSelect }) {
         }}
       >
         {numbers.map((num, i) => {
-          const angle = (i / numbers.length) * 2 * Math.PI;
+          const angle = (i / count) * Math.PI * 2;
           const x = radius * Math.cos(angle);
           const y = radius * Math.sin(angle);
 
-          const backgroundColor =
+          const baseColor =
             num === 0
               ? "#0f0" // green
               : redNumbers.has(num)
               ? "#c00" // red
               : "#000"; // black
 
+          const isHighlighted = highlightIndex === i;
+
           return (
-            <button
+            <div
               key={num}
-              onClick={() => onSelect?.(num)}
-              className="absolute rounded-full text-white font-bold flex items-center justify-center shadow-md"
+              className="absolute rounded-full text-white font-bold flex items-center justify-center shadow-md transition-all duration-100"
               style={{
                 width: buttonSize,
                 height: buttonSize,
-                fontSize: buttonSize * 0.35,
                 left: `calc(50% + ${x}px)`,
                 top: `calc(50% + ${y}px)`,
                 transform: "translate(-50%, -50%)",
-                backgroundColor,
+                backgroundColor: baseColor,
+                opacity: isHighlighted ? 1 : 0.35,
+                filter: isHighlighted ? "drop-shadow(0 0 6px #fff)" : "none",
+                fontSize: buttonSize * 0.35,
               }}
             >
               {num}
-            </button>
+            </div>
           );
         })}
       </div>
